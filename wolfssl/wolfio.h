@@ -125,7 +125,7 @@
         #elif defined(EBSNET)
             #include "rtipapi.h"  /* errno */
             #include "socket.h"
-        #elif !defined(DEVKITPRO) && !defined(WOLFSSL_PICOTCP) && !defined(WOLFSSL_CONTIKI)
+        #elif !defined(DEVKITPRO) && !defined(WOLFSSL_PICOTCP) && !defined(WOLFSSL_CONTIKI) && !defined(WOLFSSL_RIOT_OS)
             #include <sys/socket.h>
             #include <arpa/inet.h>
             #include <netinet/in.h>
@@ -465,6 +465,40 @@ WOLFSSL_API void wolfSSL_SetIOWriteFlags(WOLFSSL* ssl, int flags);
     WOLFSSL_LOCAL int uIPSendTo(WOLFSSL* ssl, char* buf, int sz, void* ctx);
 
 #endif
+
+#ifdef WOLFSSL_GNRC
+    #include <sock_types.h>
+    #include <net/gnrc.h>
+    #include <net/af.h>
+    #include <net/sock.h>
+    #include <net/gnrc/tcp.h>
+    #include <net/gnrc/udp.h>
+
+    struct gnrc_wolfssl_ctx {
+        union socket_connector {
+        #ifdef MODULE_SOCK_TCP
+            sock_tcp_t tcp;
+        #endif
+            sock_udp_t udp;
+        } conn;
+        WOLFSSL_CTX *ctx;
+        WOLFSSL *ssl;
+
+        int closing;
+        struct _sock_tl_ep peer_addr;
+    };
+
+    typedef struct gnrc_wolfssl_ctx sock_tls_t;
+
+    WOLFSSL_LOCAL int GNRC_Send(WOLFSSL* ssl, char* buf, int sz, void* ctx);
+    WOLFSSL_LOCAL int GNRC_Receive(WOLFSSL* ssl, char* buf, int sz,
+                                     void* ctx);
+    WOLFSSL_LOCAL int GNRC_ReceiveFrom(WOLFSSL* ssl, char* buf, int sz,
+                                         void* ctx);
+    WOLFSSL_LOCAL int GNRC_SendTo(WOLFSSL* ssl, char* buf, int sz, void* ctx);
+
+#endif
+
 
 #ifdef WOLFSSL_DTLS
     typedef int (*CallbackGenCookie)(WOLFSSL* ssl, unsigned char* buf, int sz,
