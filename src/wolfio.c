@@ -2181,25 +2181,6 @@ int uIPGenerateCookie(WOLFSSL* ssl, byte *buf, int sz, void *_ctx)
  * return : bytes sent, or error
  */
 
-#ifdef MODULE_TCP
-int GNRC_Send(WOLFSSL* ssl, char* buf, int sz, void* _ctx)
-{
-    sock_tls_t *ctx = (sock_tls_t *)_ctx;
-    int ret;
-    unsigned int max_sendlen;
-    int total_written = 0;
-    (void)ssl;
-    do {
-        unsigned int bytes_left = sz - total_written;
-        ret = sock_tcp_write(&ctx->conn.tcp, (unsigned char *)buf + total_written, bytes_left);
-        if (ret <= 0)
-            break;
-        total_written += ret;
-    } while(total_written < sz);
-    return total_written;
-}
-#endif
-
 int GNRC_SendTo(WOLFSSL* ssl, char* buf, int sz, void* _ctx)
 {
     sock_tls_t *ctx = (sock_tls_t *)_ctx;
@@ -2218,14 +2199,21 @@ int GNRC_Receive(WOLFSSL *ssl, char *buf, int sz, void *_ctx)
 {
     sock_udp_ep_t ep;
     int ret;
+    uint32_t timeout = wolfSSL_dtls_get_current_timeout(ssl) * 1000000;
     sock_tls_t *ctx = (sock_tls_t *)_ctx;
     if (!ctx)
         return -1;
     (void)ssl;
-    ret = sock_udp_recv(&ctx->conn.udp, buf, sz, 0, &ep);
+    if (wolfSSL_get_using_nonblock(ctx->ssl)) {
+        timeout = 0;
+    }
+    ret = sock_udp_recv(&ctx->conn.udp, buf, sz, timeout, &ep);
     if (ret > 0) {
         if (ctx->peer_addr.port == 0)
             XMEMCPY(&ctx->peer_addr, &ep, sizeof(sock_udp_ep_t));
+    }
+    if (ret == -ETIMEDOUT) {
+        return WOLFSSL_CBIO_ERR_WANT_READ;
     }
     return ret;
 }
