@@ -15331,7 +15331,7 @@ int sp_ecc_mulmod_base_256(mp_int* km, ecc_point* r, int map, void* heap)
     return err;
 }
 
-#if defined(WOLFSSL_VALIDATE_ECC_KEYGEN) || defined(HAVE_ECC_SIGN)
+#if defined(WOLFSSL_VALIDATE_ECC_KEYGEN) || defined(HAVE_ECC_SIGN) || defined(HAVE_ECC_VERIFY)
 /* Returns 1 if the number of zero.
  * Implementation is constant time.
  *

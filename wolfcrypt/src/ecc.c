@@ -88,8 +88,12 @@ ECC Curve Sizes:
 #endif
 
 /* Make sure ASN is enabled for ECC sign/verify */
-#if (defined(HAVE_ECC_SIGN) || defined(HAVE_ECC_VERIFY)) && defined(NO_ASN)
+#if (defined(HAVE_ECC_SIGN) && defined(NO_ASN))
     #error ASN must be enabled for ECC sign/verify
+#endif
+
+#ifdef NO_ASN
+#   define ECC_SECP256R1_OID  526
 #endif
 
 
@@ -6580,6 +6584,7 @@ int wc_ecc_export_private_raw(ecc_key* key, byte* qx, word32* qxLen,
 #endif /* HAVE_ECC_KEY_EXPORT */
 
 #ifdef HAVE_ECC_KEY_IMPORT
+#ifndef NO_ASN
 /* import private key, public part optional if (pub) passed as NULL */
 int wc_ecc_import_private_key_ex(const byte* priv, word32 privSz,
                                  const byte* pub, word32 pubSz, ecc_key* key,
@@ -6644,6 +6649,7 @@ int wc_ecc_import_private_key(const byte* priv, word32 privSz, const byte* pub,
     return wc_ecc_import_private_key_ex(priv, privSz, pub, pubSz, key,
                                                                 ECC_CURVE_DEF);
 }
+#endif /* NO_ASN */
 #endif /* HAVE_ECC_KEY_IMPORT */
 
 #ifndef NO_ASN
