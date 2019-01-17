@@ -28,6 +28,8 @@
 /* in case user set HAVE_ECC there */
 #include <wolfssl/wolfcrypt/settings.h>
 
+#include <wolfssl/wolfcrypt/asn_public.h>
+
 /*
 Possible ECC enable options:
  * HAVE_ECC:            Overall control of ECC                  default: on
@@ -86,16 +88,6 @@ ECC Curve Sizes:
     !defined(WOLFSSL_CUSTOM_CURVES)
     #error Brainpool and Koblitz curves requires WOLFSSL_CUSTOM_CURVES
 #endif
-
-/* Make sure ASN is enabled for ECC sign/verify */
-#if (defined(HAVE_ECC_SIGN) && defined(NO_ASN))
-    #error ASN must be enabled for ECC sign/verify
-#endif
-
-#ifdef NO_ASN
-#   define ECC_SECP256R1_OID  526
-#endif
-
 
 #if defined(HAVE_FIPS_VERSION) && (HAVE_FIPS_VERSION >= 2)
     /* set NO_WRAPPERS before headers, use direct internal f()s not wrappers */
