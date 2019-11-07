@@ -41,6 +41,10 @@
     #include <wolfcrypt/src/misc.c>
 #endif
 
+#ifdef SP_MATH
+    #include <wolfssl/wolfcrypt/sp_int.h>
+#endif
+
 
 #ifdef HAVE_PBKDF1
 
