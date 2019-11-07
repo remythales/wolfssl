@@ -7078,7 +7078,10 @@ ProtocolVersion MakeDTLSv1_2(void)
 #else
     /* Posix style time */
     #if !defined(USER_TIME) && !defined(USE_WOLF_TM)
-    #include <time.h>
+        #include <time.h>
+        #ifndef XTIME
+            #define XTIME(t) time(t)
+        #endif
     #endif
 
     word32 LowResTimer(void)

@@ -190,6 +190,7 @@ then
     enable_indef=yes
     enable_enckeys=yes
     enable_hashflags=yes
+    enable_asn_time=yes
 
     # Enable AES Decrypt, AES ECB, Alt Names, DER Load, Keep Certs, CRL IO with Timeout
     AM_CFLAGS="$AM_CFLAGS -DHAVE_AES_DECRYPT -DHAVE_AES_ECB -DWOLFSSL_ALT_NAMES -DWOLFSSL_DER_LOAD -DKEEP_OUR_CERT -DKEEP_PEER_CERT -DHAVE_CRL_IO -DHAVE_IO_TIMEOUT"
@@ -1995,6 +1996,20 @@ else
             enable_pwdbased=no
         fi
     fi
+fi
+
+# ASN certificate time verification
+# turn off ASN_TIME check. This is typically done in embedded systems
+# with no synchronized real-time clock source.
+AC_ARG_ENABLE([asn-time],
+    [AS_HELP_STRING([--enable-asn-time],[Enable ASN certificate time verification (default: enabled)])],
+    [ ENABLED_ASN_TIME=$enableval ],
+    [ ENABLED_ASN_TIME=yes ]
+    )
+
+if test "$ENABLED_ASN_TIME" = "no"
+then
+    AM_CFLAGS="$AM_CFLAGS -DNO_ASN_TIME"
 fi
 
 if test "$ENABLED_RSA" = "yes" && test "$ENABLED_RSAVFY" = "no" && test "$ENABLED_ASN" = "no"
@@ -5186,6 +5201,7 @@ echo "   * ED25519:                    $ENABLED_ED25519"
 echo "   * FPECC:                      $ENABLED_FPECC"
 echo "   * ECC_ENCRYPT:                $ENABLED_ECC_ENCRYPT"
 echo "   * ASN:                        $ENABLED_ASN"
+echo "   * ASN time verification:      $ENABLED_ASN_TIME"
 echo "   * Anonymous cipher:           $ENABLED_ANON"
 echo "   * CODING:                     $ENABLED_CODING"
 echo "   * MEMORY:                     $ENABLED_MEMORY"
