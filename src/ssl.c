@@ -41643,6 +41643,7 @@ void* wolfSSL_GetEccKeyGenCtx(WOLFSSL* ssl)
     return NULL;
 }
 
+
 WOLFSSL_ABI
 void  wolfSSL_CTX_SetEccSignCb(WOLFSSL_CTX* ctx, CallbackEccSign cb)
 {
@@ -41698,6 +41699,30 @@ void* wolfSSL_GetEccSharedSecretCtx(WOLFSSL* ssl)
     return NULL;
 }
 #endif /* HAVE_ECC */
+
+#ifdef HAVE_HKDF
+
+WOLFSSL_ABI
+void  wolfSSL_CTX_SetHKDFExtractCb(WOLFSSL_CTX* ctx, CallbackHKDFExtract cb)
+{
+    if (ctx)
+        ctx->HkdfExtractCb = cb;
+}
+
+void wolfSSL_SetHKDFExtractCtx(WOLFSSL* ssl, void *ctx)
+{
+    if (ssl)
+        ssl->HkdfExtractCtx = ctx;
+}
+
+void* wolfSSL_GetHKDFExtractCtx(WOLFSSL* ssl)
+{
+    if (ssl)
+        return ssl->HkdfExtractCtx;
+
+    return NULL;
+}
+#endif /* HAVE_HKDF */
 
 #ifdef HAVE_ED25519
 void  wolfSSL_CTX_SetEd25519SignCb(WOLFSSL_CTX* ctx, CallbackEd25519Sign cb)

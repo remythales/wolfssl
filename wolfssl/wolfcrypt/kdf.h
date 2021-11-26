@@ -66,6 +66,8 @@ WOLFSSL_API int wc_PRF_TLS(byte* digest, word32 digLen, const byte* secret,
 #endif /* WOLFSSL_HAVE_PRF */
 
 #ifdef HAVE_HKDF
+typedef int (*CallbackHKDFExtract)(byte* prk, const byte* salt, int saltLen,
+       byte* ikm, int ikmLen, int mac, void* ctx);
 
 enum {
 /*
@@ -79,12 +81,17 @@ enum {
 WOLFSSL_API int wc_Tls13_HKDF_Extract(byte* prk, const byte* salt, int saltLen,
                              byte* ikm, int ikmLen, int digest);
 
+WOLFSSL_API int wc_Tls13_HKDF_Extract_ex(byte* prk, const byte* salt,
+                             int saltLen, byte* ikm, int ikmLen, int digest,
+                             CallbackHKDFExtract *cb, void *cb_ctx);
+
 WOLFSSL_API int wc_Tls13_HKDF_Expand_Label(byte* okm, word32 okmLen,
                              const byte* prk, word32 prkLen,
                              const byte* protocol, word32 protocolLen,
                              const byte* label, word32 labelLen,
                              const byte* info, word32 infoLen,
                              int digest);
+
 
 #endif /* HAVE_HKDF */
 

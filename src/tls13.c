@@ -850,6 +850,25 @@ static int DeriveTrafficSecret(WOLFSSL* ssl, byte* secret)
                      ssl->specs.mac_algorithm, 0);
 }
 
+
+static inline int Tls13_HKDF_Extract(WOLFSSL *ssl, byte* prk, const byte* salt, int saltLen,
+                                 byte* ikm, int ikmLen, int digest)
+{
+    CallbackHKDFExtract cb = ssl->ctx->HkdfExtractCb;
+    void *cb_ctx = ssl->HkdfExtractCtx;
+    int ret;
+#ifdef HAVE_PK_CALLBACKS
+        if ((cb != NULL) && (saltLen > 0)) {
+            ret = cb(prk, salt, saltLen, ikm, ikmLen, digest, cb_ctx);
+        } else {
+            ret = wc_HKDF_Extract(digest, salt, saltLen, ikm, ikmLen, prk);
+        }
+#else
+        ret = wc_HKDF_Extract(digest, salt, saltLen, ikm, ikmLen, prk);
+#endif
+        return ret;
+}
+
 /* Derive the early secret using HKDF Extract.
  *
  * ssl  The SSL/TLS object.
@@ -864,11 +883,11 @@ int DeriveEarlySecret(WOLFSSL* ssl)
     }
     PRIVATE_KEY_UNLOCK();
 #if defined(HAVE_SESSION_TICKET) || !defined(NO_PSK)
-    ret = wc_Tls13_HKDF_Extract(ssl->arrays->secret, NULL, 0,
+    ret = Tls13_HKDF_Extract(ssl, ssl->arrays->secret, NULL, 0,
             ssl->arrays->psk_key, ssl->arrays->psk_keySz,
             mac2hash(ssl->specs.mac_algorithm));
 #else
-    ret = wc_Tls13_HKDF_Extract(ssl->arrays->secret, NULL, 0,
+    ret = Tls13_HKDF_Extract(ssl, ssl->arrays->secret, NULL, 0,
             ssl->arrays->masterSecret, 0, mac2hash(ssl->specs.mac_algorithm));
 #endif
     PRIVATE_KEY_LOCK();
@@ -900,7 +919,7 @@ int DeriveHandshakeSecret(WOLFSSL* ssl)
         return ret;
 
     PRIVATE_KEY_UNLOCK();
-    ret = wc_Tls13_HKDF_Extract(ssl->arrays->preMasterSecret,
+    ret = Tls13_HKDF_Extract(ssl, ssl->arrays->preMasterSecret,
             key, ssl->specs.hash_size,
             ssl->arrays->preMasterSecret, ssl->arrays->preMasterSz,
             mac2hash(ssl->specs.mac_algorithm));
@@ -928,7 +947,7 @@ int DeriveMasterSecret(WOLFSSL* ssl)
         return ret;
 
     PRIVATE_KEY_UNLOCK();
-    ret = wc_Tls13_HKDF_Extract(ssl->arrays->masterSecret,
+    ret = Tls13_HKDF_Extract(ssl, ssl->arrays->masterSecret,
             key, ssl->specs.hash_size,
             ssl->arrays->masterSecret, 0, mac2hash(ssl->specs.mac_algorithm));
     PRIVATE_KEY_LOCK();
