@@ -105,6 +105,7 @@ typedef struct wc_IOTSAFE IOTSAFE;
 #define IOTSAFE_INS_PUT_PUBLIC_INIT    0x24
 #define IOTSAFE_INS_PUT_PUBLIC_UPDATE  0xD8
 #define IOTSAFE_INS_SIGN_INIT     0x2A
+#define IOTSAFE_INS_HKDF_EXTRACT 0x4A
 #define IOTSAFE_INS_SIGN_UPDATE   0x2B
 #define IOTSAFE_INS_VERIFY_INIT   0x2C
 #define IOTSAFE_INS_VERIFY_UPDATE 0x2D
@@ -129,6 +130,8 @@ typedef struct wc_IOTSAFE IOTSAFE;
 #define IOTSAFE_TAG_SIGNATURE_FIELD     0x33
 #define IOTSAFE_TAG_FILE_ID             0x83
 #define IOTSAFE_TAG_PRIVKEY_ID          0x84
+#define IOTSAFE_TAG_SECRET              0xD1
+#define IOTSAFE_TAG_SALT                0xD5
 #define IOTSAFE_TAG_PUBKEY_ID           0x85
 #define IOTSAFE_TAG_HASH_ALGO           0x91
 #define IOTSAFE_TAG_SIGN_ALGO           0x92

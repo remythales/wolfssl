@@ -261,7 +261,7 @@ static int iotsafe_cmd_add_tlv_ex(char *cmd, byte tag, uint16_t len,
     cur_csim_len += (len_csim_str[1] - '0') * 10;
     if (len_csim_str[0] >= '0' &&
             len_csim_str[0] <= '9') {
-        cur_csim_len += len_csim_str[0] * 100;
+        cur_csim_len += (len_csim_str[0] -'0') * 100;
     } else if (len_csim_str[0] != ' ') {
         return BAD_FUNC_ARG;
     }
@@ -451,7 +451,7 @@ static int iotsafe_readfile(uint8_t *file_id, uint16_t file_id_sz,
         return ret;
     }
 
-    filesz_s = search_tlv(resp + 4, ret, 0x20);
+    filesz_s = search_tlv(resp, ret, 0x20);
     if ((filesz_s) && (XSTRLEN(filesz_s)) >= 8) {
         uint8_t fs_msb, fs_lsb;
         if (hex_to_bytes(filesz_s + 4, &fs_msb, 1) < 0)
@@ -598,9 +598,9 @@ static int iotsafe_gen_keypair(byte *wr_slot, unsigned long id_size,
         ret = WC_HW_E;
     } else {
         if (!iotsafe_parse_public_key(resp, ret, key)) {
-            ret = 1;
-        } else {
             ret = 0;
+        } else {
+            ret = 1;
         }
     }
     return ret;
@@ -683,12 +683,52 @@ static int iotsafe_put_public_key(byte *pubkey_id, unsigned long id_size,
             } else {
                 ret = 0;
             }
-            do {
-                ret = expect_ok("AT\r\n", 4);
-            } while (ret == 0);
-            ret = 0;
         }
     }
+    return ret;
+}
+
+//hkdf extract
+static int iotsafe_hkdf_extract(byte* prk, const byte* salt, int saltLen,
+       byte* ikm, int ikmLen, int mac)
+{
+    int ret;
+    char *resp;
+	uint16_t hash_algo  = 0;
+
+    WOLFSSL_MSG("Enter iotsafe_hkdf_extract");
+     switch (mac) {
+        case WC_SHA256:
+         hash_algo = (uint16_t)1;
+            break;
+        case WC_SHA384:
+          hash_algo = (uint16_t)2;
+             break;
+        case WC_SHA512:
+            hash_algo = (uint16_t)4;
+            break;
+        default:
+            break;
+     }
+	uint16_t hash_algo_be = XHTONS(hash_algo);
+
+    iotsafe_cmd_start(csim_cmd, IOTSAFE_CLASS, IOTSAFE_INS_HKDF_EXTRACT, 0, 0);
+    iotsafe_cmd_add_tlv(csim_cmd, IOTSAFE_TAG_SECRET, ikmLen, ikm);
+    iotsafe_cmd_add_tlv(csim_cmd, IOTSAFE_TAG_SALT, saltLen,salt);
+    iotsafe_cmd_add_tlv(csim_cmd, IOTSAFE_TAG_HASH_ALGO, 2, (const byte*)&hash_algo_be);
+    iotsafe_cmd_complete(csim_cmd);
+    if (expect_csim_response(csim_cmd, (word32)XSTRLEN(csim_cmd), &resp) < 1) {
+        WOLFSSL_MSG("Unexpected reply from HKDF extract");
+        ret = WC_HW_E;
+    } else {
+
+         ret = hexbuffer_conv(resp, prk, 32);
+        if (ret < 0)
+            ret = WC_HW_E;
+        else
+            ret = 0;
+    }
+
     return ret;
 }
 
@@ -741,14 +781,14 @@ static int iotsafe_sign_hash(byte *privkey_idx, uint16_t id_size,
 
         ret = expect_csim_response(csim_cmd, (word32)XSTRLEN(csim_cmd), &resp);
         if (ret >= 0) {
-            byte sig_hdr[3];
-            if (hex_to_bytes(resp, sig_hdr, 3) < 0) {
+            byte sig_hdr[2];
+            int len;
+            if (hex_to_bytes(resp, sig_hdr, 2) < 0) {
                ret = BAD_FUNC_ARG;
             } else if ((sig_hdr[0] == IOTSAFE_TAG_SIGNATURE_FIELD) &&
-                       (sig_hdr[1] == 0) &&
-                       (sig_hdr[2] == 2 * IOTSAFE_ECC_KSIZE)) {
-                XSTRNCPY(R, resp + 6, IOTSAFE_ECC_KSIZE * 2);
-                XSTRNCPY(S, resp + 6 + IOTSAFE_ECC_KSIZE * 2,
+                       (sig_hdr[1] ==  2 * IOTSAFE_ECC_KSIZE)) {
+                XSTRNCPY(R, resp + 4, IOTSAFE_ECC_KSIZE * 2);
+                XSTRNCPY(S, resp + 4 + IOTSAFE_ECC_KSIZE * 2,
                         IOTSAFE_ECC_KSIZE * 2);
                 ret = wc_ecc_rs_to_sig(R, S, signature, sigLen);
             } else {
@@ -905,6 +945,42 @@ static int wolfIoT_ecc_keygen(WOLFSSL* ssl, struct ecc_key* key,
     }
     (void)ctx;
     return ret;
+}
+
+//hkdf extract iot safe
+static int wolfIoT_hkdf_extract(WOLFSSL* ssl,
+       byte* prk, const byte* salt, int saltLen,
+       byte* ikm, int ikmLen, int mac,
+       void* ctx)
+{
+    (void)ctx;
+    int ret;
+    IOTSAFE *iotsafe = wolfSSL_get_iotsafe_ctx(ssl);
+
+    if (iotsafe == NULL) {
+        return BAD_FUNC_ARG;
+    }
+    WOLFSSL_MSG("IOTSAFE: Called wolfIoT_hkdf_extract\n");
+
+    #ifdef DEBUG_IOTSAFE
+    printf("IOTSAFE PK HKDF Extract\n");
+    printf("salt: ");
+    for(int i = 0; i < saltLen; i++)
+        printf("%02X", salt[i]);
+
+    printf("\nikm: ");
+    for(int i = 0; i < ikmLen; i++)
+        printf("%02X", ikm[i]);
+
+    printf("\nhash: %d\n", mac);
+    #endif
+
+     if (iotsafe->enabled) {
+           ret = iotsafe_hkdf_extract(prk, salt, saltLen, ikm, ikmLen, mac);
+        return ret;
+    }
+    else
+        return NOT_COMPILED_IN;
 }
 
 
@@ -1376,6 +1452,7 @@ int wolfSSL_CTX_iotsafe_enable(WOLFSSL_CTX *ctx)
     wolfSSL_CTX_SetEccVerifyCb(ctx, wolfIoT_ecc_verify);
     wolfSSL_CTX_SetEccKeyGenCb(ctx, wolfIoT_ecc_keygen);
     wolfSSL_CTX_SetEccSharedSecretCb(ctx, wolfIoT_ecc_shared_secret);
+    wolfSSL_CTX_SetHKDFExtractCb(ctx, wolfIoT_hkdf_extract);
     #ifndef NO_DH
     wolfSSL_CTX_SetDhAgreeCb(ctx, wolfIoT_dh_agree);
     #endif /* NO_DH */
